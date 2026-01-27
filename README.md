@@ -66,8 +66,13 @@ fax_order/
 ├── README.md                 # このファイル
 ├── QUICK_START.md            # クイックスタートガイド
 ├── SETUP_GUIDE.md            # セットアップガイド
-├── DEPLOYMENT.md             # デプロイ手順
-├── GITHUB_SETUP.md           # GitHub設定手順
+├── DEPLOYMENT.md             # デプロイ手順（詳細版）
+├── STREAMLIT_CLOUD_SETUP.md  # Streamlit Cloudデプロイ手順（簡易版）
+├── GITHUB_SETUP.md           # GitHub設定手順（詳細版）
+├── GITHUB_REPO_SETUP.md      # GitHubリポジトリ作成手順（簡易版）
+├── NEXT_STEPS.md             # 次のステップ（全体の流れ）
+├── connect_to_github.bat     # GitHub接続用スクリプト
+├── push_to_github.bat        # GitHubプッシュ用スクリプト
 └── RESTORE_GUIDE.md          # 状態を戻す手順
 ```
 
@@ -96,14 +101,25 @@ fax_order/
 
 ### Streamlit Cloudを使用（推奨）
 
-1. GitHubリポジトリにプッシュ（`GITHUB_SETUP.md`を参照）
-2. Streamlit Cloudにデプロイ（`DEPLOYMENT.md`を参照）
-3. 発行されたURLを他のPCからアクセス
+**最も簡単な方法**: `NEXT_STEPS.md` を参照してください。
+
+1. **GitHubリポジトリを作成**
+   - GitHubでリポジトリを作成（`GITHUB_REPO_SETUP.md`を参照）
+   - `connect_to_github.bat` を実行して接続
+   - `push_to_github.bat` を実行してプッシュ
+
+2. **Streamlit Cloudにデプロイ**
+   - `STREAMLIT_CLOUD_SETUP.md` を参照
+   - または `DEPLOYMENT.md` の詳細手順を参照
+
+3. **発行されたURLを他のPCからアクセス**
+   - どのPCからでも、ブラウザがあれば使用可能
 
 **メリット**: 
 - ブラウザからどこでもアクセス可能
 - 修正をGitHubにプッシュするだけで自動反映
 - サーバー管理不要
+- 無料で利用可能
 
 ### ローカル実行
 
