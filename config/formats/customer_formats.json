@@ -1,0 +1,15 @@
+{
+  "得意先A": {
+    "formats": [
+      {
+        "name": "フォーマット1",
+        "date_pattern": "日付.*?(\\d{4}[年/]\\d{1,2}[月/]\\d{1,2}[日])",
+        "order_number_pattern": "発注[№番号]*[：:]\\s*([^\\n]+)",
+        "customer_pattern": "得意先[：:]\\s*([^\\n]+)",
+        "delivery_pattern": "納品先[：:]\\s*([^\\n]+)",
+        "items_pattern": "品名.*?数量.*?単価.*?金額",
+        "delivery_date_pattern": "納品日[：:]\\s*(\\d{4}[年/]\\d{1,2}[月/]\\d{1,2}[日])"
+      }
+    ]
+  }
+}
