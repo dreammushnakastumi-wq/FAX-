@@ -4,6 +4,9 @@ config/service-account-key.json
 config/credentials.json
 token.json
 .streamlit/secrets.toml
+*.json
+!package.json
+!package-lock.json
 
 # Python
 __pycache__/
