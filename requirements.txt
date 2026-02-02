@@ -19,5 +19,8 @@ pandas>=2.2.0
 # ユーティリティ
 python-dotenv==1.0.0
 
+# PDF分割用ライブラリ
+pypdf>=3.0.0
+
 # WEBアプリフレームワーク
 streamlit>=1.28.0

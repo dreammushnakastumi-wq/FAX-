@@ -1,13 +1,13 @@
 @echo off
 chcp 65001 >nul 2>&1
-title FAX注文処理アプリ
+title FAX Order Processing App
 
 echo ============================================================
-echo   FAX注文処理アプリを起動します
+echo   Starting FAX Order Processing App
 echo ============================================================
 echo.
-echo ブラウザが自動的に開きます
-echo 終了する場合は Ctrl+C を押してください
+echo Browser will open automatically
+echo Press Ctrl+C to exit
 echo ============================================================
 echo.
 
@@ -15,94 +15,94 @@ REM バッチファイルのディレクトリに移動
 set "BATCH_DIR=%~dp0"
 cd /d "%BATCH_DIR%"
 
-REM 必要なファイルの確認
+REM Check required files
 if not exist "fax_order_app.py" (
-    echo [エラー] fax_order_app.py が見つかりません。
-    echo このバッチファイルを正しいフォルダで実行してください。
+    echo [ERROR] fax_order_app.py not found.
+    echo Please run this batch file in the correct folder.
     echo.
     pause
     exit /b 1
 )
 
-echo 必要なファイルを確認しました。
+echo Required files confirmed.
 echo.
 
-REM Pythonの確認
-echo Pythonのインストールを確認中...
+REM Check Python installation
+echo Checking Python installation...
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo [エラー] Pythonが見つかりません。
-    echo Python 3.8以上をインストールしてください: https://www.python.org/downloads/
+    echo [ERROR] Python not found.
+    echo Please install Python 3.8 or higher: https://www.python.org/downloads/
     echo.
     pause
     exit /b 1
 ) else (
-    echo Pythonが見つかりました。
+    echo Python found.
     python --version
 )
 echo.
 
-REM 仮想環境の確認
+REM Check virtual environment
 if exist venv (
-    echo 仮想環境を有効化中...
+    echo Activating virtual environment...
     call venv\Scripts\activate.bat
     if errorlevel 1 (
-        echo [警告] 仮想環境の有効化に失敗しました。
-        echo グローバル環境で起動を試みます...
+        echo [WARNING] Failed to activate virtual environment.
+        echo Attempting to start with global environment...
         echo.
     ) else (
-        echo 仮想環境を有効化しました。
+        echo Virtual environment activated.
         echo.
     )
 ) else (
-    echo [警告] 仮想環境が見つかりません。
-    echo グローバル環境で起動を試みます...
-    echo 初回起動の場合は setup.bat を実行してください。
+    echo [WARNING] Virtual environment not found.
+    echo Attempting to start with global environment...
+    echo Please run setup.bat for first-time setup.
     echo.
 )
 
-REM Streamlitの確認
-echo Streamlitのインストールを確認中...
+REM Check Streamlit installation
+echo Checking Streamlit installation...
 python -c "import streamlit" 2>nul
 if errorlevel 1 (
-    echo [エラー] Streamlitがインストールされていません。
-    echo setup.bat を実行してセットアップしてください。
+    echo [ERROR] Streamlit is not installed.
+    echo Please run setup.bat to complete setup.
     echo.
     pause
     exit /b 1
 ) else (
-    echo Streamlitがインストールされています。
+    echo Streamlit is installed.
 )
 echo.
 
-REM アプリの起動
+REM Start application
 echo ============================================================
-echo アプリを起動中...
+echo Starting application...
 echo ============================================================
 echo.
-echo ブラウザで http://localhost:8501 が開きます
-echo 終了する場合は Ctrl+C を押してください
+echo Browser will open at http://localhost:8501
+echo Press Ctrl+C to exit
 echo.
 
 REM Streamlitを起動（ブラウザを自動で開く）
 python -m streamlit run fax_order_app.py
 
-REM エラーハンドリング
+REM Error handling
 if errorlevel 1 (
     echo.
-    echo [エラー] アプリの起動に失敗しました。
-    echo 上記のエラーメッセージを確認してください。
+    echo [ERROR] Failed to start application.
+    echo Please check the error messages above.
     echo.
-    echo よくある問題:
-    echo - setup.bat を実行してセットアップを完了してください
-    echo - .streamlit\secrets.toml の設定を確認してください
-    echo - ポート8501が既に使用されている場合は、他のアプリを終了してください
+    echo Common issues:
+    echo - Run setup.bat to complete setup
+    echo - Check .streamlit\secrets.toml configuration
+    echo - If port 8501 is already in use, close other applications
     echo.
     pause
     exit /b 1
 ) else (
     echo.
-    echo アプリが終了しました。
+    echo Application closed.
     echo.
     pause
 )
