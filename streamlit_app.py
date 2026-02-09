@@ -538,34 +538,6 @@ def main():
                         st.text(f"品名: {row.get('品名', '')}")
                         st.text(f"数量: {row.get('数量', '')}")
                         st.markdown("---")
-            
-            with col2:
-                st.write("**元のPDF画像**")
-                # PDF→画像変換して表示（最初のファイルのみテスト）
-                try:
-                    from pdf2image import convert_from_bytes
-                    from PIL import Image
-                    
-                    # 最初のアップロードファイルを表示
-                    first_file = uploaded_files[0]
-                    
-                    # PDFを画像に変換
-                    # PDFを画像に変換
-                    images = convert_from_bytes(
-                        first_file.getvalue(),
-                        poppler_path=r"C:\Users\ML-Y\Desktop\カーソル\fax_order\poppler\poppler-25.12.0\Library\bin"
-                    )
-                    
-                    if images:
-                        # 最初のページを表示
-                        st.image(images[0], caption=f"{first_file.name} - ページ1", use_container_width=True)
-                    else:
-                        st.warning("画像に変換できませんでした")
-                        
-                except ImportError:
-                    st.error("pdf2imageまたはpillowがインストールされていません")
-                except Exception as e:
-                    st.error(f"PDF表示エラー: {e}")
         # スプレッドシートに保存
         st.markdown("---")
         st.subheader("💾 スプレッドシートに保存")
