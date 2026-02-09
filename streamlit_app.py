@@ -519,7 +519,49 @@ def main():
         
         df = pd.DataFrame(st.session_state.extracted_data)
         st.dataframe(df, use_container_width=True)
+        # PDF表示機能（テスト版）
+        st.markdown("---")
+        st.subheader("📄 PDF確認ビューア")
         
+        # PDFファイルが存在するか確認
+        if uploaded_files:
+            # 2カラムレイアウト
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                st.write("**読み取りデータ**")
+                # データをクリック可能に表示
+                for idx, row in df.iterrows():
+                    with st.container():
+                        st.caption(f"行 {idx + 1}")
+                        st.text(f"得意先: {row.get('得意先名', '')}")
+                        st.text(f"品名: {row.get('品名', '')}")
+                        st.text(f"数量: {row.get('数量', '')}")
+                        st.markdown("---")
+            
+            with col2:
+                st.write("**元のPDF画像**")
+                # PDF→画像変換して表示（最初のファイルのみテスト）
+                try:
+                    from pdf2image import convert_from_bytes
+                    from PIL import Image
+                    
+                    # 最初のアップロードファイルを表示
+                    first_file = uploaded_files[0]
+                    
+                    # PDFを画像に変換
+                    images = convert_from_bytes(first_file.getvalue())
+                    
+                    if images:
+                        # 最初のページを表示
+                        st.image(images[0], caption=f"{first_file.name} - ページ1", use_container_width=True)
+                    else:
+                        st.warning("画像に変換できませんでした")
+                        
+                except ImportError:
+                    st.error("pdf2imageまたはpillowがインストールされていません")
+                except Exception as e:
+                    st.error(f"PDF表示エラー: {e}")
         # スプレッドシートに保存
         st.markdown("---")
         st.subheader("💾 スプレッドシートに保存")
