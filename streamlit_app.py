@@ -550,7 +550,11 @@ def main():
                     first_file = uploaded_files[0]
                     
                     # PDFを画像に変換
-                    images = convert_from_bytes(first_file.getvalue())
+                    # PDFを画像に変換
+images = convert_from_bytes(
+    first_file.getvalue(),
+    poppler_path=r"C:\Users\ML-Y\Desktop\カーソル\fax_order\poppler\poppler-25.12.0\Library\bin"
+)
                     
                     if images:
                         # 最初のページを表示
