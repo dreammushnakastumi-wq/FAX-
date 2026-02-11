@@ -271,14 +271,25 @@ def format_data_for_display(results: list) -> pd.DataFrame:
     """
     rows = []
     
+    # デバッグ
+    st.write(f"DEBUG format_data_for_display: results count = {len(results)}")
+    
     for result in results:
+        st.write(f"DEBUG: Processing result: {result.get('filename', 'unknown')}")
+        st.write(f"DEBUG: success = {result.get('success', False)}")
+        st.write(f"DEBUG: pages count = {len(result.get('pages', []))}")
+        
         if result['success']:
             for page_info in result['pages']:
+                st.write(f"DEBUG: page_info.success = {page_info.get('success', False)}")
                 if page_info['success']:
                     order_data = page_info['data']
+                    st.write(f"DEBUG: order_data keys = {list(order_data.keys())}")
+                    st.write(f"DEBUG: order_data.get('items') = {order_data.get('items')}")
                     
                     # 商品情報がある場合は各商品ごとに1行
                     if order_data.get('items'):
+                        st.write(f"DEBUG: items count = {len(order_data.get('items', []))}")
                         for item in order_data.get('items', []):
                             rows.append({
                                 'ファイル名': result['filename'],
@@ -299,6 +310,7 @@ def format_data_for_display(results: list) -> pd.DataFrame:
                             })
                     else:
                         # 商品情報がない場合は1行だけ
+                        st.write(f"DEBUG: No items, adding single row")
                         rows.append({
                             'ファイル名': result['filename'],
                             'ページ': page_info['page_num'],
@@ -316,7 +328,12 @@ def format_data_for_display(results: list) -> pd.DataFrame:
                             '処理日時': order_data.get('processed_at', ''),
                             '元ファイル名': order_data.get('filename', '')
                         })
+                else:
+                    st.write(f"DEBUG: page_info.success is False, skipping")
+        else:
+            st.write(f"DEBUG: result.success is False, skipping")
     
+    st.write(f"DEBUG: Total rows created = {len(rows)}")
     return pd.DataFrame(rows)
 
 
