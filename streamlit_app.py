@@ -500,6 +500,13 @@ def main():
                 success_count = sum(1 for r in all_results if r['success'])
                 
                 progress_bar.progress(1.0)
+                
+                # デバッグ用: extracted_dataの内容を確認
+                st.write("DEBUG: extracted_data exists?", bool(st.session_state.extracted_data))
+                st.write("DEBUG: extracted_data length:", len(st.session_state.extracted_data) if st.session_state.extracted_data else 0)
+                if st.session_state.extracted_data:
+                    st.write("DEBUG: First row:", st.session_state.extracted_data[0])
+                
                 status_text.success(f"✅ 全処理完了: {success_count}/{total_files}ファイル成功 ({total_pages}ページ)")
                 
                 if success_count < total_files:
