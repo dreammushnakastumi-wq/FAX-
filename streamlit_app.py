@@ -489,8 +489,20 @@ def main():
                 # 処理履歴に追加
                 st.session_state.processed_files = all_results
                 
+                # デバッグ: all_resultsの内容を確認
+                st.write("DEBUG: all_results count:", len(all_results))
+                st.write("DEBUG: all_results success count:", sum(1 for r in all_results if r.get('success', False)))
+                if all_results:
+                    st.write("DEBUG: First result keys:", list(all_results[0].keys()) if all_results[0] else [])
+                    if all_results[0].get('success') and all_results[0].get('pages'):
+                        st.write("DEBUG: First result pages count:", len(all_results[0]['pages']))
+                
                 # データをDataFrameに変換
                 df = format_data_for_display(all_results)
+                st.write("DEBUG: df rows:", len(df))
+                st.write("DEBUG: df columns:", list(df.columns) if len(df) > 0 else [])
+                st.write("DEBUG: df.to_dict('records'):", df.to_dict('records')[:1] if len(df) > 0 else [])
+                
                 st.session_state.extracted_data = df.to_dict('records')
                 
                 progress_bar.progress(0.95)
