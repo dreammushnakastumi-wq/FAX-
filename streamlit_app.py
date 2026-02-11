@@ -36,7 +36,12 @@ st.set_page_config(
     page_title="注文書データ化アプリ",
     page_icon="📝",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
 )
 
 # セッション状態の初期化
@@ -718,16 +723,31 @@ def main():
                         # 選択されたファイルのバイトデータを取得
                         file_bytes = st.session_state.pdf_files[selected_file]
                         
+                        # Popplerパスの設定（ローカル環境とStreamlit Cloudの判定）
+                        poppler_path_local = r"C:\Users\ML-Y\Desktop\カーソル\fax_order\poppler\poppler-25.12.0\Library\bin"
+                        
+                        # ローカル環境でPopplerが存在する場合
+                        if os.path.exists(poppler_path_local):
+                            poppler_path = poppler_path_local
+                        else:
+                            # Streamlit Cloud環境ではPopplerが利用できないためNone
+                            poppler_path = None
+                        
                         # PDFを画像に変換
-                        images = convert_from_bytes(
-                            file_bytes,
-                            poppler_path=r"C:\Users\ML-Y\Desktop\カーソル\fax_order\poppler\poppler-25.12.0\Library\bin"
-                        )
+                        if poppler_path:
+                            images = convert_from_bytes(
+                                file_bytes,
+                                poppler_path=poppler_path
+                            )
+                        else:
+                            # Streamlit Cloud環境ではPDF表示をスキップ
+                            images = None
+                            st.warning("⚠️ PDF表示機能はローカル環境でのみ利用できます。Streamlit Cloudでは表示されません。")
                     else:
                         st.info("📄 左側の表の「選択」列にチェックを入れてデータ行を選択してください")
                         images = None
                     
-                    if images:
+                    if images and len(images) > 0:
                         total_pages = len(images)
                         
                         # 選択された行からページ番号を取得（なければセッションステートから）
