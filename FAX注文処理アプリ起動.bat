@@ -16,8 +16,8 @@ set "BATCH_DIR=%~dp0"
 cd /d "%BATCH_DIR%"
 
 REM Check required files
-if not exist "fax_order_app.py" (
-    echo [ERROR] fax_order_app.py not found.
+if not exist "streamlit_app.py" (
+    echo [ERROR] streamlit_app.py not found.
     echo Please run this batch file in the correct folder.
     echo.
     pause
@@ -85,7 +85,7 @@ echo Press Ctrl+C to exit
 echo.
 
 REM Streamlitを起動（ブラウザを自動で開く）
-python -m streamlit run fax_order_app.py
+python -m streamlit run streamlit_app.py
 
 REM Error handling
 if errorlevel 1 (
