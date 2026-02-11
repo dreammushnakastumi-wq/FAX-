@@ -54,12 +54,7 @@ if 'initialized' not in st.session_state:
     st.session_state.processed_files = []
     st.session_state.extracted_data = []
     st.session_state.pdf_files = {}  # PDFファイルのバイトデータを保存（filename: bytes）
-    st.session_state.selected_pdf_file = None  # 選択されたPDFファイル名
-    st.session_state.selected_pdf_page = 1  # 選択されたページ番号（1始まり）
-    st.session_state.pdf_image_rotation = 0  # PDF画像の回転角度（0, 90, 180, 270）
     st.session_state.edited_data = None  # 編集されたデータ（DataFrame形式）
-    st.session_state.selected_row_index = None  # 選択された行のインデックス
-    st.session_state.previous_selection_df = None  # 前回の選択状態（ラジオボタン式選択用）
 
 
 def get_secrets():
@@ -529,308 +524,29 @@ def main():
                     except:
                         pass
     
-    # PDF確認ビューア
+    # 読み取りデータの表示と編集
     if st.session_state.extracted_data:
-        st.subheader("📄 PDF確認ビューア")
+        st.markdown("---")
+        st.subheader("📊 読み取りデータ")
         
-        # PDFファイルが存在するか確認（セッションステートから確認）
-        if st.session_state.pdf_files:
-            # データをDataFrameに変換（編集済みデータがあればそれを使用）
-            if st.session_state.edited_data is not None:
-                df_base = st.session_state.edited_data.copy()
-            else:
-                df_base = pd.DataFrame(st.session_state.extracted_data)
-            
-            # 一番左に「選択」列を追加（Boolean型）
-            df = df_base.copy()
-            
-            # 既存の「選択」列があれば削除
-            if '選択' in df.columns:
-                df = df.drop(columns=['選択'])
-            
-            # 「選択」列を追加（初期値は全てFalse）
-            df['選択'] = False
-            
-            # 列の順序を明示的に指定（「選択」列を一番左に）
-            # 列の順序: ['選択', 'ファイル名', 'ページ', '日付', '発注番号', ...]
-            cols = ['選択'] + [col for col in df.columns if col != '選択']
-            df = df[cols]
-            
-            # 選択中の行の「選択」列をTrueに設定
-            if st.session_state.selected_row_index is not None and st.session_state.selected_row_index < len(df):
-                df.iloc[st.session_state.selected_row_index, df.columns.get_loc('選択')] = True
-            
-            # 初回表示時は最初の行を選択
-            if st.session_state.selected_row_index is None and len(df) > 0:
-                st.session_state.selected_row_index = 0
-                df.iloc[0, df.columns.get_loc('選択')] = True
-                first_row = df_base.iloc[0] if len(df_base) > 0 else df.iloc[0]
-                filename = first_row.get('ファイル名', '')
-                page_num = first_row.get('ページ', 1)
-                if filename in st.session_state.pdf_files:
-                    st.session_state.selected_pdf_file = filename
-                    st.session_state.selected_pdf_page = int(page_num) if pd.notna(page_num) else 1
-            
-            # 前回の選択状態を反映（ラジオボタン式選択のため、1行のみTrueにする）
-            if st.session_state.previous_selection_df is not None and len(st.session_state.previous_selection_df) == len(df):
-                # 前回の選択状態を確認
-                previous_selection = st.session_state.previous_selection_df['選択']
-                if previous_selection.sum() == 1:
-                    # 1行だけ選択されている場合は、その状態を維持
-                    selected_idx = previous_selection[previous_selection].index[0]
-                    if selected_idx < len(df):
-                        df['選択'] = False
-                        df.iloc[selected_idx, df.columns.get_loc('選択')] = True
-                        st.session_state.selected_row_index = selected_idx
-            
-            # 2カラムレイアウト（60%:40%）
-            col1, col2 = st.columns([3, 2])
-            
-            with col1:
-                st.write("**読み取りデータ**")
-                st.caption("「選択」列にチェックを入れると、対応するPDFページが表示されます。")
-                
-                # 列の設定を定義（「選択」列をチェックボックスとして表示）
-                column_config = {
-                    "選択": st.column_config.CheckboxColumn("選択", width="small")
-                }
-                
-                # データエディタで編集されたデータを取得
-                edited_df_with_selection = st.data_editor(
-                    df,
-                    use_container_width=True,
-                    num_rows="dynamic",
-                    key="data_editor_all",
-                    column_config=column_config
-                )
-                
-                # ラジオボタン式選択の実装
-                # 前回の選択状態と比較して、新しくTrueになった行を検出
-                if st.session_state.previous_selection_df is not None and len(st.session_state.previous_selection_df) == len(edited_df_with_selection):
-                    # 前回と今回の「選択」列を比較
-                    previous_selection = st.session_state.previous_selection_df['選択']
-                    current_selection = edited_df_with_selection['選択']
-                    
-                    # 選択されている行の数を確認
-                    num_selected = current_selection.sum()
-                    
-                    # 新しくTrueになった行を検出
-                    newly_selected = current_selection & (~previous_selection)
-                    
-                    # 複数の行が選択されている、または新しく選択された行がある場合
-                    if num_selected > 1 or newly_selected.any():
-                        # 新しく選択された行のインデックスを取得
-                        if newly_selected.any():
-                            # 新しく選択された行を優先
-                            new_selected_idx = newly_selected[newly_selected].index[0]
-                        elif num_selected > 1:
-                            # 複数選択されている場合は、最初にTrueになった行を選択
-                            new_selected_idx = current_selection[current_selection].index[0]
-                        else:
-                            new_selected_idx = None
-                        
-                        if new_selected_idx is not None:
-                            # すべての行をFalseに設定
-                            edited_df_with_selection['選択'] = False
-                            
-                            # 新しく選択された行のみTrueに設定
-                            edited_df_with_selection.loc[new_selected_idx, '選択'] = True
-                            
-                            # セッションステートに選択状態を保存（次回レンダリング時に反映）
-                            st.session_state.selected_row_index = new_selected_idx
-                            
-                            # 前回の選択状態を更新
-                            st.session_state.previous_selection_df = edited_df_with_selection[['選択']].copy()
-                            
-                            # ページを再読み込みして更新を反映
-                            st.rerun()
-                    else:
-                        # 選択状態に変更がない場合も、前回の選択状態を更新
-                        st.session_state.previous_selection_df = edited_df_with_selection[['選択']].copy()
-                else:
-                    # 初回または行数が変わった場合は、前回の選択状態を保存
-                    st.session_state.previous_selection_df = edited_df_with_selection[['選択']].copy()
-                
-                # 「選択」列を削除して編集データを取得
-                edited_df = edited_df_with_selection.drop(columns=['選択'])
-                
-                # 選択された行を検出（「選択」列がTrueの行）
-                selected_rows = edited_df_with_selection[edited_df_with_selection['選択'] == True]
-                
-                if not selected_rows.empty:
-                    # 最初に選択された行のインデックスを取得
-                    selected_idx = selected_rows.index[0]
-                    
-                    if selected_idx < len(edited_df):
-                        # 選択が変更された場合のみ更新
-                        if st.session_state.selected_row_index != selected_idx:
-                            st.session_state.selected_row_index = selected_idx
-                            
-                            # 選択された行のデータを取得
-                            selected_row = edited_df.iloc[selected_idx]
-                            filename = selected_row.get('ファイル名', '')
-                            page_num = selected_row.get('ページ', 1)
-                            
-                            # PDFファイルとページを設定
-                            if filename in st.session_state.pdf_files:
-                                st.session_state.selected_pdf_file = filename
-                                st.session_state.selected_pdf_page = int(page_num) if pd.notna(page_num) else 1
-                                st.session_state.pdf_image_rotation = 0  # 回転をリセット
-                
-                # 選択された行の情報を表示
-                if st.session_state.selected_row_index is not None and st.session_state.selected_row_index < len(edited_df):
-                    selected_row = edited_df.iloc[st.session_state.selected_row_index]
-                    st.info(f"📌 表示中: 行{st.session_state.selected_row_index + 1} - {selected_row.get('ファイル名', 'N/A')} - ページ{selected_row.get('ページ', 'N/A')}")
-                
-                # 編集されたデータを反映
-                st.session_state.edited_data = edited_df
-                st.session_state.extracted_data = edited_df.to_dict('records')
-                # edited_dfをセッションステートに保存して、col2からも参照できるようにする
-                st.session_state.current_edited_df = edited_df
-            
-            with col2:
-                st.write("**元のPDF画像**")
-                
-                try:
-                    from pdf2image import convert_from_bytes
-                    from PIL import Image
-                    
-                    # 選択された行からファイル名とページ番号を取得
-                    # edited_dfを取得（セッションステートから、または現在の編集データから）
-                    if 'current_edited_df' in st.session_state:
-                        current_df = st.session_state.current_edited_df
-                    else:
-                        current_df = df
-                    
-                    if st.session_state.selected_row_index is not None and st.session_state.selected_row_index < len(current_df):
-                        selected_row = current_df.iloc[st.session_state.selected_row_index]
-                        selected_file = selected_row.get('ファイル名', '')
-                        selected_page_from_row = selected_row.get('ページ', 1)
-                        
-                        # ファイル名とページ番号をセッションステートに設定
-                        if selected_file in st.session_state.pdf_files:
-                            st.session_state.selected_pdf_file = selected_file
-                            st.session_state.selected_pdf_page = int(selected_page_from_row) if pd.notna(selected_page_from_row) else 1
-                    elif st.session_state.selected_pdf_file is None or st.session_state.selected_pdf_file not in st.session_state.pdf_files:
-                        # 選択がない場合は最初のファイルを表示
-                        if st.session_state.pdf_files:
-                            st.session_state.selected_pdf_file = list(st.session_state.pdf_files.keys())[0]
-                            st.session_state.selected_pdf_page = 1
-                    
-                    selected_file = st.session_state.selected_pdf_file
-                    
-                    if selected_file and selected_file in st.session_state.pdf_files:
-                        # 選択されたファイルのバイトデータを取得
-                        file_bytes = st.session_state.pdf_files[selected_file]
-                        
-                        # Popplerパスの設定（ローカル環境とStreamlit Cloudの判定）
-                        poppler_path_local = r"C:\Users\ML-Y\Desktop\カーソル\fax_order\poppler\poppler-25.12.0\Library\bin"
-                        
-                        # ローカル環境でPopplerが存在する場合
-                        if os.path.exists(poppler_path_local):
-                            poppler_path = poppler_path_local
-                        else:
-                            # Streamlit Cloud環境ではPopplerが利用できないためNone
-                            poppler_path = None
-                        
-                        # PDFを画像に変換
-                        if poppler_path:
-                            images = convert_from_bytes(
-                                file_bytes,
-                                poppler_path=poppler_path
-                            )
-                        else:
-                            # Streamlit Cloud環境ではPDF表示をスキップ
-                            images = None
-                            st.warning("⚠️ PDF表示機能はローカル環境でのみ利用できます。Streamlit Cloudでは表示されません。")
-                    else:
-                        st.info("📄 左側の表の「選択」列にチェックを入れてデータ行を選択してください")
-                        images = None
-                    
-                    if images and len(images) > 0:
-                        total_pages = len(images)
-                        
-                        # 選択された行からページ番号を取得（なければセッションステートから）
-                        if st.session_state.selected_row_index is not None and st.session_state.selected_row_index < len(current_df):
-                            selected_row = current_df.iloc[st.session_state.selected_row_index]
-                            page_from_row = selected_row.get('ページ', 1)
-                            if pd.notna(page_from_row):
-                                st.session_state.selected_pdf_page = int(page_from_row)
-                        
-                        # ページ番号の表示・選択
-                        if total_pages == 1:
-                            # 1ページの場合はスライダーを表示せず、テキストで表示
-                            selected_page = 1
-                            st.session_state.selected_pdf_page = 1
-                            st.write(f"📄 ページ 1/1")
-                        else:
-                            # 2ページ以上の場合のみスライダーを表示
-                            selected_page = st.slider(
-                                "📄 ページ番号",
-                                min_value=1,
-                                max_value=total_pages,
-                                value=st.session_state.selected_pdf_page,
-                                key="pdf_page_slider"
-                            )
-                            
-                            # ページが変更された場合
-                            if selected_page != st.session_state.selected_pdf_page:
-                                st.session_state.selected_pdf_page = selected_page
-                        
-                        # ページ番号を1始まりのインデックスに変換（0始まりに変換）
-                        page_idx = selected_page - 1
-                        
-                        if 0 <= page_idx < len(images):
-                            # PDF画像を取得
-                            image = images[page_idx]
-                            
-                            # 回転ボタン
-                            col_rot1, col_rot2, col_rot3, col_rot4 = st.columns(4)
-                            with col_rot1:
-                                if st.button("↻ 90°回転", key="rotate_90"):
-                                    st.session_state.pdf_image_rotation = (st.session_state.pdf_image_rotation + 90) % 360
-                                    st.rerun()
-                            with col_rot2:
-                                if st.button("↺ -90°回転", key="rotate_minus_90"):
-                                    st.session_state.pdf_image_rotation = (st.session_state.pdf_image_rotation - 90) % 360
-                                    st.rerun()
-                            with col_rot3:
-                                if st.button("↻ 180°回転", key="rotate_180"):
-                                    st.session_state.pdf_image_rotation = (st.session_state.pdf_image_rotation + 180) % 360
-                                    st.rerun()
-                            with col_rot4:
-                                if st.button("🔄 リセット", key="reset_rotation"):
-                                    st.session_state.pdf_image_rotation = 0
-                                    st.rerun()
-                            
-                            # 画像を回転
-                            if st.session_state.pdf_image_rotation != 0:
-                                image = image.rotate(-st.session_state.pdf_image_rotation, expand=True)
-                            
-                            # 画像を表示
-                            st.image(
-                                image,
-                                caption=f"{selected_file} - ページ{selected_page}/{total_pages}",
-                                use_container_width=True
-                            )
-                            
-                            # 回転角度の表示
-                            if st.session_state.pdf_image_rotation != 0:
-                                st.caption(f"回転角度: {st.session_state.pdf_image_rotation}°")
-                        else:
-                            st.warning(f"ページ{selected_page}は存在しません（総ページ数: {total_pages}）")
-                    else:
-                        st.warning("画像に変換できませんでした")
-                        
-                except ImportError:
-                    st.error("pdf2imageまたはpillowがインストールされていません。")
-                    st.info("以下のコマンドでインストールしてください: `pip install pdf2image pillow`")
-                except Exception as e:
-                    st.error(f"PDF表示エラー: {e}")
-                    import traceback
-                    st.code(traceback.format_exc())
+        # データをDataFrameに変換（編集済みデータがあればそれを使用）
+        if st.session_state.edited_data is not None:
+            df = st.session_state.edited_data.copy()
         else:
-            st.info("📄 PDFファイルがアップロードされていません。ファイルをアップロードして処理を実行してください。")
+            df = pd.DataFrame(st.session_state.extracted_data)
+        
+        # データエディタで編集
+        edited_df = st.data_editor(
+            df,
+            use_container_width=True,
+            num_rows="dynamic",
+            key="data_editor_main"
+        )
+        
+        # 編集されたデータを反映
+        st.session_state.edited_data = edited_df
+        st.session_state.extracted_data = edited_df.to_dict('records')
+        
         # スプレッドシートに保存
         st.markdown("---")
         st.subheader("💾 スプレッドシートに保存")
