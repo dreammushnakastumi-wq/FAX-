@@ -564,6 +564,39 @@ def main():
         st.session_state.edited_data = edited_df
         st.session_state.extracted_data = edited_df.to_dict('records')
         
+        # スプレッドシートに保存
+        st.markdown("---")
+        st.subheader("💾 スプレッドシートに保存")
+        
+        if st.button("💾 スプレッドシートに保存", type="primary", use_container_width=True):
+            try:
+                # スプレッドシート形式に変換
+                rows_to_save = []
+                for row in st.session_state.extracted_data:
+                    rows_to_save.append([
+                        row.get('日付', ''),
+                        row.get('発注番号', ''),
+                        row.get('得意先名', ''),
+                        row.get('納品先名', ''),
+                        row.get('品名', ''),
+                        row.get('数量', ''),
+                        row.get('単位', ''),
+                        row.get('単価', ''),
+                        row.get('金額', ''),
+                        row.get('納品日', ''),
+                        row.get('備考', ''),
+                        row.get('処理日時', ''),
+                        row.get('元ファイル名', '')
+                    ])
+                
+                # スプレッドシートに保存
+                st.session_state.sheets_client.append_rows(None, rows_to_save)
+                st.success(f"✓ {len(rows_to_save)}行をスプレッドシートに保存しました")
+                
+            except Exception as e:
+                st.error(f"保存エラー: {e}")
+                logger.error(f"保存エラー: {e}", exc_info=True)
+        
         # PDF確認ビューア（ローカル環境のみ）
         poppler_path = r"C:\Users\ML-Y\Desktop\カーソル\fax_order\poppler\poppler-25.12.0\Library\bin"
         is_local = os.path.exists(poppler_path)
@@ -729,39 +762,6 @@ def main():
                     st.error(f"PDF表示エラー: {e}")
                     import traceback
                     st.code(traceback.format_exc())
-        
-        # スプレッドシートに保存
-        st.markdown("---")
-        st.subheader("💾 スプレッドシートに保存")
-        
-        if st.button("💾 スプレッドシートに保存", type="primary", use_container_width=True):
-            try:
-                # スプレッドシート形式に変換
-                rows_to_save = []
-                for row in st.session_state.extracted_data:
-                    rows_to_save.append([
-                        row.get('日付', ''),
-                        row.get('発注番号', ''),
-                        row.get('得意先名', ''),
-                        row.get('納品先名', ''),
-                        row.get('品名', ''),
-                        row.get('数量', ''),
-                        row.get('単位', ''),
-                        row.get('単価', ''),
-                        row.get('金額', ''),
-                        row.get('納品日', ''),
-                        row.get('備考', ''),
-                        row.get('処理日時', ''),
-                        row.get('元ファイル名', '')
-                    ])
-                
-                # スプレッドシートに保存
-                st.session_state.sheets_client.append_rows(None, rows_to_save)
-                st.success(f"✓ {len(rows_to_save)}行をスプレッドシートに保存しました")
-                
-            except Exception as e:
-                st.error(f"保存エラー: {e}")
-                logger.error(f"保存エラー: {e}", exc_info=True)
     
     # 処理履歴
     if st.session_state.processed_files:
