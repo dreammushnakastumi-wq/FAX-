@@ -230,14 +230,38 @@ def process_file(file_path: str, filename: str) -> dict:
                 order_data = ai_extractor.extract(page_text, page_filename)
                 logger.info(f"AI抽出完了: {page_filename}")
                 
-                result['pages'].append({
-                    'page_num': page_num,
-                    'data': order_data,
-                    'success': True
-                })
+                # デバッグ: order_dataの内容を確認
+                st.write(f"DEBUG process_file: AI抽出成功 - {page_filename}")
+                st.write(f"DEBUG process_file: order_data type = {type(order_data)}")
+                st.write(f"DEBUG process_file: order_data is None? {order_data is None}")
+                if order_data:
+                    st.write(f"DEBUG process_file: order_data keys = {list(order_data.keys()) if isinstance(order_data, dict) else 'Not a dict'}")
+                
+                # order_dataが有効な場合のみsuccess: Trueを設定
+                if order_data is not None:
+                    page_info = {
+                        'page_num': page_num,
+                        'data': order_data,
+                        'success': True  # 明示的にTrueを設定
+                    }
+                    st.write(f"DEBUG process_file: page_info['success'] = {page_info['success']}")
+                    result['pages'].append(page_info)
+                    logger.info(f"ページ {page_num} の処理成功: {page_filename}")
+                else:
+                    # order_dataがNoneの場合はエラーとして扱う
+                    error_msg = f"AI抽出結果がNoneです（ページ{page_num}）"
+                    logger.warning(f"AI抽出結果がNone: {page_filename}")
+                    st.write(f"DEBUG process_file: order_data is None, setting success=False")
+                    result['pages'].append({
+                        'page_num': page_num,
+                        'data': {},
+                        'success': False,
+                        'error': error_msg
+                    })
             except Exception as ai_error:
                 error_msg = f"AI抽出エラー（ページ{page_num}）: {str(ai_error)}"
                 logger.error(f"AI抽出エラー {page_filename}: {ai_error}", exc_info=True)
+                st.write(f"DEBUG process_file: AI抽出エラー - {error_msg}")
                 result['pages'].append({
                     'page_num': page_num,
                     'data': {},
