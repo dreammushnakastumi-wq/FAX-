@@ -55,6 +55,10 @@ if 'initialized' not in st.session_state:
     st.session_state.extracted_data = []
     st.session_state.pdf_files = {}  # PDFファイルのバイトデータを保存（filename: bytes）
     st.session_state.edited_data = None  # 編集されたデータ（DataFrame形式）
+    st.session_state.selected_pdf_file = None  # 選択されたPDFファイル名
+    st.session_state.selected_pdf_page = 1  # 選択されたページ番号（1始まり）
+    st.session_state.pdf_image_rotation = 0  # PDF画像の回転角度（0, 90, 180, 270）
+    st.session_state.selected_row_index = None  # 選択された行のインデックス
 
 
 def get_secrets():
@@ -230,28 +234,18 @@ def process_file(file_path: str, filename: str) -> dict:
                 order_data = ai_extractor.extract(page_text, page_filename)
                 logger.info(f"AI抽出完了: {page_filename}")
                 
-                # デバッグ: order_dataの内容を確認
-                st.write(f"DEBUG process_file: AI抽出成功 - {page_filename}")
-                st.write(f"DEBUG process_file: order_data type = {type(order_data)}")
-                st.write(f"DEBUG process_file: order_data is None? {order_data is None}")
-                if order_data:
-                    st.write(f"DEBUG process_file: order_data keys = {list(order_data.keys()) if isinstance(order_data, dict) else 'Not a dict'}")
-                
                 # order_dataが有効な場合のみsuccess: Trueを設定
                 if order_data is not None:
-                    page_info = {
+                    result['pages'].append({
                         'page_num': page_num,
                         'data': order_data,
-                        'success': True  # 明示的にTrueを設定
-                    }
-                    st.write(f"DEBUG process_file: page_info['success'] = {page_info['success']}")
-                    result['pages'].append(page_info)
+                        'success': True
+                    })
                     logger.info(f"ページ {page_num} の処理成功: {page_filename}")
                 else:
                     # order_dataがNoneの場合はエラーとして扱う
                     error_msg = f"AI抽出結果がNoneです（ページ{page_num}）"
                     logger.warning(f"AI抽出結果がNone: {page_filename}")
-                    st.write(f"DEBUG process_file: order_data is None, setting success=False")
                     result['pages'].append({
                         'page_num': page_num,
                         'data': {},
@@ -261,7 +255,6 @@ def process_file(file_path: str, filename: str) -> dict:
             except Exception as ai_error:
                 error_msg = f"AI抽出エラー（ページ{page_num}）: {str(ai_error)}"
                 logger.error(f"AI抽出エラー {page_filename}: {ai_error}", exc_info=True)
-                st.write(f"DEBUG process_file: AI抽出エラー - {error_msg}")
                 result['pages'].append({
                     'page_num': page_num,
                     'data': {},
@@ -295,25 +288,14 @@ def format_data_for_display(results: list) -> pd.DataFrame:
     """
     rows = []
     
-    # デバッグ
-    st.write(f"DEBUG format_data_for_display: results count = {len(results)}")
-    
     for result in results:
-        st.write(f"DEBUG: Processing result: {result.get('filename', 'unknown')}")
-        st.write(f"DEBUG: success = {result.get('success', False)}")
-        st.write(f"DEBUG: pages count = {len(result.get('pages', []))}")
-        
         if result['success']:
             for page_info in result['pages']:
-                st.write(f"DEBUG: page_info.success = {page_info.get('success', False)}")
                 if page_info['success']:
                     order_data = page_info['data']
-                    st.write(f"DEBUG: order_data keys = {list(order_data.keys())}")
-                    st.write(f"DEBUG: order_data.get('items') = {order_data.get('items')}")
                     
                     # 商品情報がある場合は各商品ごとに1行
                     if order_data.get('items'):
-                        st.write(f"DEBUG: items count = {len(order_data.get('items', []))}")
                         for item in order_data.get('items', []):
                             rows.append({
                                 'ファイル名': result['filename'],
@@ -334,7 +316,6 @@ def format_data_for_display(results: list) -> pd.DataFrame:
                             })
                     else:
                         # 商品情報がない場合は1行だけ
-                        st.write(f"DEBUG: No items, adding single row")
                         rows.append({
                             'ファイル名': result['filename'],
                             'ページ': page_info['page_num'],
@@ -352,12 +333,7 @@ def format_data_for_display(results: list) -> pd.DataFrame:
                             '処理日時': order_data.get('processed_at', ''),
                             '元ファイル名': order_data.get('filename', '')
                         })
-                else:
-                    st.write(f"DEBUG: page_info.success is False, skipping")
-        else:
-            st.write(f"DEBUG: result.success is False, skipping")
     
-    st.write(f"DEBUG: Total rows created = {len(rows)}")
     return pd.DataFrame(rows)
 
 
@@ -530,20 +506,8 @@ def main():
                 # 処理履歴に追加
                 st.session_state.processed_files = all_results
                 
-                # デバッグ: all_resultsの内容を確認
-                st.write("DEBUG: all_results count:", len(all_results))
-                st.write("DEBUG: all_results success count:", sum(1 for r in all_results if r.get('success', False)))
-                if all_results:
-                    st.write("DEBUG: First result keys:", list(all_results[0].keys()) if all_results[0] else [])
-                    if all_results[0].get('success') and all_results[0].get('pages'):
-                        st.write("DEBUG: First result pages count:", len(all_results[0]['pages']))
-                
                 # データをDataFrameに変換
                 df = format_data_for_display(all_results)
-                st.write("DEBUG: df rows:", len(df))
-                st.write("DEBUG: df columns:", list(df.columns) if len(df) > 0 else [])
-                st.write("DEBUG: df.to_dict('records'):", df.to_dict('records')[:1] if len(df) > 0 else [])
-                
                 st.session_state.extracted_data = df.to_dict('records')
                 
                 progress_bar.progress(0.95)
@@ -553,13 +517,6 @@ def main():
                 success_count = sum(1 for r in all_results if r['success'])
                 
                 progress_bar.progress(1.0)
-                
-                # デバッグ用: extracted_dataの内容を確認
-                st.write("DEBUG: extracted_data exists?", bool(st.session_state.extracted_data))
-                st.write("DEBUG: extracted_data length:", len(st.session_state.extracted_data) if st.session_state.extracted_data else 0)
-                if st.session_state.extracted_data:
-                    st.write("DEBUG: First row:", st.session_state.extracted_data[0])
-                
                 status_text.success(f"✅ 全処理完了: {success_count}/{total_files}ファイル成功 ({total_pages}ページ)")
                 
                 if success_count < total_files:
@@ -606,6 +563,172 @@ def main():
         # 編集されたデータを反映
         st.session_state.edited_data = edited_df
         st.session_state.extracted_data = edited_df.to_dict('records')
+        
+        # PDF確認ビューア（ローカル環境のみ）
+        poppler_path = r"C:\Users\ML-Y\Desktop\カーソル\fax_order\poppler\poppler-25.12.0\Library\bin"
+        is_local = os.path.exists(poppler_path)
+        
+        if is_local and st.session_state.pdf_files:
+            st.markdown("---")
+            st.subheader("📄 PDF確認ビューア（ローカル専用）")
+            
+            # 2カラムレイアウト
+            col1, col2 = st.columns([3, 2])
+            
+            with col1:
+                st.write("**読み取りデータ（選択用）**")
+                st.caption("表示したい行の「選択」列にチェックを入れてください。")
+                
+                # 選択列を追加
+                df_with_selection = edited_df.copy()
+                if '選択' not in df_with_selection.columns:
+                    df_with_selection.insert(0, '選択', False)
+                
+                # 選択中の行をTrueに設定（他の行はFalse）
+                df_with_selection['選択'] = False
+                if st.session_state.selected_row_index is not None and st.session_state.selected_row_index < len(df_with_selection):
+                    df_with_selection.iloc[st.session_state.selected_row_index, df_with_selection.columns.get_loc('選択')] = True
+                
+                # 列の順序を指定
+                cols = ['選択'] + [col for col in df_with_selection.columns if col != '選択']
+                df_with_selection = df_with_selection[cols]
+                
+                # データエディタで選択
+                column_config = {
+                    "選択": st.column_config.CheckboxColumn("選択", width="small")
+                }
+                
+                edited_df_with_selection = st.data_editor(
+                    df_with_selection,
+                    use_container_width=True,
+                    num_rows="dynamic",
+                    key="data_editor_pdf_selection",
+                    column_config=column_config,
+                    disabled=[col for col in df_with_selection.columns if col != '選択']
+                )
+                
+                # ラジオボタン式選択の実装（1行だけ選択可能）
+                selected_rows = edited_df_with_selection[edited_df_with_selection['選択'] == True]
+                num_selected = len(selected_rows)
+                
+                if num_selected > 0:
+                    # 選択された行のインデックスを取得
+                    selected_idx = selected_rows.index[0]
+                    
+                    # 複数選択されている場合は、最初の1つだけを残す
+                    if num_selected > 1:
+                        df_with_selection['選択'] = False
+                        df_with_selection.iloc[selected_idx, df_with_selection.columns.get_loc('選択')] = True
+                        st.session_state.selected_row_index = selected_idx
+                        st.rerun()
+                    
+                    if selected_idx < len(edited_df):
+                        # 選択が変更された場合のみ更新
+                        if st.session_state.selected_row_index != selected_idx:
+                            st.session_state.selected_row_index = selected_idx
+                            selected_row = edited_df.iloc[selected_idx]
+                            filename = selected_row.get('ファイル名', '')
+                            page_num = selected_row.get('ページ', 1)
+                            
+                            if filename in st.session_state.pdf_files:
+                                st.session_state.selected_pdf_file = filename
+                                st.session_state.selected_pdf_page = int(page_num) if pd.notna(page_num) else 1
+                                st.session_state.pdf_image_rotation = 0  # 回転をリセット
+                elif st.session_state.selected_row_index is not None:
+                    # すべての選択が外された場合
+                    st.session_state.selected_row_index = None
+                    st.session_state.selected_pdf_file = None
+            
+            with col2:
+                st.write("**元のPDF画像**")
+                
+                try:
+                    from pdf2image import convert_from_bytes
+                    from PIL import Image
+                    
+                    selected_file = st.session_state.selected_pdf_file
+                    
+                    if selected_file and selected_file in st.session_state.pdf_files:
+                        file_bytes = st.session_state.pdf_files[selected_file]
+                        
+                        # PDFを画像に変換
+                        images = convert_from_bytes(
+                            file_bytes,
+                            poppler_path=poppler_path
+                        )
+                        
+                        if images and len(images) > 0:
+                            total_pages = len(images)
+                            
+                            # ページ番号の表示・選択
+                            if total_pages == 1:
+                                selected_page = 1
+                                st.session_state.selected_pdf_page = 1
+                                st.write(f"📄 ページ 1/1")
+                            else:
+                                selected_page = st.slider(
+                                    "📄 ページ番号",
+                                    min_value=1,
+                                    max_value=total_pages,
+                                    value=st.session_state.selected_pdf_page,
+                                    key="pdf_page_slider"
+                                )
+                                st.session_state.selected_pdf_page = selected_page
+                            
+                            # ページ番号を1始まりのインデックスに変換（0始まりに変換）
+                            page_idx = selected_page - 1
+                            
+                            if 0 <= page_idx < len(images):
+                                # PDF画像を取得
+                                image = images[page_idx]
+                                
+                                # 回転ボタン
+                                col_rot1, col_rot2, col_rot3, col_rot4 = st.columns(4)
+                                with col_rot1:
+                                    if st.button("↻ 90°回転", key="rotate_90"):
+                                        st.session_state.pdf_image_rotation = (st.session_state.pdf_image_rotation + 90) % 360
+                                        st.rerun()
+                                with col_rot2:
+                                    if st.button("↺ -90°回転", key="rotate_minus_90"):
+                                        st.session_state.pdf_image_rotation = (st.session_state.pdf_image_rotation - 90) % 360
+                                        st.rerun()
+                                with col_rot3:
+                                    if st.button("↻ 180°回転", key="rotate_180"):
+                                        st.session_state.pdf_image_rotation = (st.session_state.pdf_image_rotation + 180) % 360
+                                        st.rerun()
+                                with col_rot4:
+                                    if st.button("🔄 リセット", key="reset_rotation"):
+                                        st.session_state.pdf_image_rotation = 0
+                                        st.rerun()
+                                
+                                # 画像を回転
+                                if st.session_state.pdf_image_rotation != 0:
+                                    image = image.rotate(-st.session_state.pdf_image_rotation, expand=True)
+                                
+                                # 画像を表示
+                                st.image(
+                                    image,
+                                    caption=f"{selected_file} - ページ{selected_page}/{total_pages}",
+                                    use_container_width=True
+                                )
+                                
+                                # 回転角度の表示
+                                if st.session_state.pdf_image_rotation != 0:
+                                    st.caption(f"回転角度: {st.session_state.pdf_image_rotation}°")
+                            else:
+                                st.warning(f"ページ{selected_page}は存在しません（総ページ数: {total_pages}）")
+                        else:
+                            st.warning("画像に変換できませんでした")
+                    else:
+                        st.info("📄 左側の表の「選択」列にチェックを入れてデータ行を選択してください")
+                        
+                except ImportError:
+                    st.error("pdf2imageまたはpillowがインストールされていません。")
+                    st.info("以下のコマンドでインストールしてください: `pip install pdf2image pillow`")
+                except Exception as e:
+                    st.error(f"PDF表示エラー: {e}")
+                    import traceback
+                    st.code(traceback.format_exc())
         
         # スプレッドシートに保存
         st.markdown("---")
